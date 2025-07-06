@@ -1,0 +1,65 @@
+{
+  "name": "solbolt",
+  "version": "0.1.0",
+  "description": "SolBolt - Off-chain payment channels for Solana",
+  "private": true,
+  "workspaces": [
+    "sdk",
+    "cli"
+  ],
+  "scripts": {
+    "build": "npm run build:sdk && npm run build:cli",
+    "build:sdk": "cd sdk && npm run build",
+    "build:cli": "cd cli && npm run build",
+    "install:all": "npm install",
+    "test": "npm run test:sdk && npm run test:cli",
+    "test:sdk": "cd sdk && npm test",
+    "test:cli": "cd cli && npm test",
+    "clean": "npm run clean:sdk && npm run clean:cli",
+    "clean:sdk": "cd sdk && rm -rf dist node_modules",
+    "clean:cli": "cd cli && rm -rf dist node_modules",
+    "demo": "cd cli && node dist/index.js demo",
+    "demo:devnet": "cd cli && node dist/index.js demo --network devnet",
+    "demo:testnet": "cd cli && node dist/index.js demo --network testnet",
+    "examples": "cd examples && npx ts-node basic-usage.ts",
+    "examples:advanced": "cd examples && npx ts-node advanced-usage.ts",
+    "dev": "concurrently \"npm run dev:sdk\" \"npm run dev:cli\"",
+    "dev:sdk": "cd sdk && npm run dev",
+    "dev:cli": "cd cli && npm run dev",
+    "lint": "npm run lint:sdk && npm run lint:cli",
+    "lint:sdk": "cd sdk && npm run lint",
+    "lint:cli": "cd cli && npm run lint",
+    "format": "prettier --write \"**/*.{ts,js,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,js,json,md}\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0",
+    "prettier": "^3.0.0"
+  },
+  "keywords": [
+    "solana",
+    "payment-channels",
+    "lightning-network",
+    "micropayments",
+    "blockchain",
+    "defi",
+    "off-chain",
+    "typescript",
+    "rust",
+    "anchor"
+  ],
+  "author": "SolBolt Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/solbolt.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/solbolt/issues"
+  },
+  "homepage": "https://solbolt.dev",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+} 

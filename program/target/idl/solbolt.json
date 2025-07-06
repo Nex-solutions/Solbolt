@@ -1,0 +1,243 @@
+{
+  "version": "0.1.0",
+  "name": "solbolt",
+  "instructions": [
+    {
+      "name": "openChannel",
+      "accounts": [
+        {
+          "name": "channel",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "partyA",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "partyB",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "initialDeposit",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "updateChannel",
+      "accounts": [
+        {
+          "name": "channel",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "balanceA",
+          "type": "u64"
+        },
+        {
+          "name": "balanceB",
+          "type": "u64"
+        },
+        {
+          "name": "nonce",
+          "type": "u64"
+        },
+        {
+          "name": "signatureA",
+          "type": {
+            "vec": "u8"
+          }
+        },
+        {
+          "name": "signatureB",
+          "type": {
+            "vec": "u8"
+          }
+        }
+      ]
+    },
+    {
+      "name": "closeChannel",
+      "accounts": [
+        {
+          "name": "channel",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "partyA",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "partyB",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "balanceA",
+          "type": "u64"
+        },
+        {
+          "name": "balanceB",
+          "type": "u64"
+        },
+        {
+          "name": "nonce",
+          "type": "u64"
+        },
+        {
+          "name": "signatureA",
+          "type": {
+            "vec": "u8"
+          }
+        },
+        {
+          "name": "signatureB",
+          "type": {
+            "vec": "u8"
+          }
+        }
+      ]
+    },
+    {
+      "name": "forceCloseChannel",
+      "accounts": [
+        {
+          "name": "channel",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "PaymentChannel",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "partyA",
+            "type": "publicKey"
+          },
+          {
+            "name": "partyB",
+            "type": "publicKey"
+          },
+          {
+            "name": "balanceA",
+            "type": "u64"
+          },
+          {
+            "name": "balanceB",
+            "type": "u64"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "isOpen",
+            "type": "bool"
+          },
+          {
+            "name": "openedAt",
+            "type": "i64"
+          },
+          {
+            "name": "timeoutAt",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidDepositAmount",
+      "msg": "Initial deposit must be greater than 0"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidPartyOrder",
+      "msg": "Party A must be lexicographically smaller than Party B"
+    },
+    {
+      "code": 6002,
+      "name": "ChannelNotOpen",
+      "msg": "Channel is not open"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidNonce",
+      "msg": "Nonce must be greater than current nonce"
+    },
+    {
+      "code": 6004,
+      "name": "InvalidBalance",
+      "msg": "Invalid balance amounts"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidSignature",
+      "msg": "Invalid signature"
+    },
+    {
+      "code": 6006,
+      "name": "ChannelNotTimedOut",
+      "msg": "Channel has not timed out yet"
+    },
+    {
+      "code": 6007,
+      "name": "NotParticipant",
+      "msg": "Not a participant in this channel"
+    }
+  ]
+} 
