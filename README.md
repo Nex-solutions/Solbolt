@@ -1,4 +1,4 @@
-# SolBolt ⚡
+# SolBolt ⚡ (STILL ON DEVNET)
 
 An open-source developer toolkit enabling off-chain payment channels on Solana — allowing two parties to conduct thousands of micropayments off-chain, then settle with a single on-chain transaction.
 
