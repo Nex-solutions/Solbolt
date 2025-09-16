@@ -2,6 +2,7 @@ import { Connection, Keypair, PublicKey } from '@solana/web3.js';
 import { SolBolt } from '@solbolt/sdk';
 import { OffChainVoucher } from '@solbolt/sdk';
 import { lamportsToSol, solToLamports } from '@solbolt/sdk';
+import * as fs from 'fs';
 
 /**
  * Basic SolBolt Usage Example
@@ -19,8 +20,19 @@ async function basicUsage() {
   const connection = new Connection('https://api.devnet.solana.com');
   
   // Create keypairs for demo (in production, use real wallets)
-  const alice = Keypair.generate();
-  const bob = Keypair.generate();
+  
+  let alice: Keypair;
+  let bob: Keypair;
+  try {
+    alice = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(fs.readFileSync('alice-keypair.json', 'utf-8'))));
+  } catch {
+    alice = Keypair.generate();
+  }
+  try {
+    bob = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(fs.readFileSync('bob-keypair.json', 'utf-8'))));
+  } catch {
+    bob = Keypair.generate();
+  }
   
   console.log('Generated keypairs:');
   console.log('Alice:', alice.publicKey.toString());

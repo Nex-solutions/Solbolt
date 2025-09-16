@@ -4,7 +4,7 @@ pub mod instructions;
 pub mod state;
 pub mod errors;
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("F61wLbAw1hUvsEjArLDEmvzBPpMxL9oJKAxDtGsAi3VV");
 
 // Define account structs directly in lib.rs for Anchor macro
 #[derive(Accounts)]

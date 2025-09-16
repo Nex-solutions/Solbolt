@@ -1,6 +1,7 @@
 {
   "name": "solbolt",
   "version": "0.1.0",
+  "type": "commonjs",
   "description": "SolBolt - Off-chain payment channels for Solana",
   "private": true,
   "workspaces": [
@@ -34,7 +35,9 @@
   },
   "devDependencies": {
     "concurrently": "^8.2.0",
-    "prettier": "^3.0.0"
+    "prettier": "^3.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
   },
   "keywords": [
     "solana",
@@ -62,4 +65,4 @@
     "node": ">=18.0.0",
     "npm": ">=8.0.0"
   }
-} 
+}
