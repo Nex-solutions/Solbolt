@@ -1,210 +1,210 @@
-# SolBolt ⚡ (STILL ON DEVNET)
+# SolBolt ⚡ (STILL ON TESTNET)
 
-An open-source developer toolkit enabling off-chain payment channels on Solana — allowing two parties to conduct thousands of micropayments off-chain, then settle with a single on-chain transaction.
+A payment channel implementation for Solana enabling off-chain micropayments with on-chain settlement, inspired by Bitcoin's Lightning Network.
 
-## 🚀 What is SolBolt?
+## Overview
 
-SolBolt is inspired by Bitcoin's Lightning Network and enables:
-- **Off-chain micropayments** with instant settlement
-- **Dramatically reduced fees** by batching transactions
-- **Scalable microtransactions** for use cases like tips, in-game purchases, and pay-per-click services
-- **Single on-chain settlement** after hundreds of off-chain transactions
+SolBolt provides a developer toolkit for building payment channels on Solana, allowing two parties to conduct numerous off-chain transactions and settle with a single on-chain transaction.
 
-## ✅ Current Status
+**Current Status:** Active development - Testnet deployment
 
-**All components are working and ready for use:**
-- ✅ **Smart Contract**: Rust/Anchor program compiles successfully
-- ✅ **TypeScript SDK**: Built and tested with full functionality
-- ✅ **CLI Tool**: Interactive demo and channel management working
-- ✅ **Examples**: Basic and advanced usage examples included
+## Features
 
-## 📁 Project Structure
+- **Off-chain transactions** - Instant micropayments without blockchain fees
+- **Cryptographic vouchers** - Secure state updates signed by both parties
+- **Single settlement** - Batch hundreds of transactions into one on-chain close
+- **TypeScript SDK** - Easy integration for developers
+- **CLI tools** - Interactive testing and management
+
+## Architecture
 
 ```
 solbolt/
 ├── program/          # Solana smart contract (Rust/Anchor)
 │   ├── src/
-│   │   ├── lib.rs              # Main program entry point
-│   │   ├── state/mod.rs        # Payment channel state
-│   │   ├── errors/mod.rs       # Custom error types
-│   │   └── instructions/       # Instruction handlers
-│   └── Cargo.toml              # Rust dependencies
-├── sdk/             # TypeScript SDK for developers
+│   │   ├── lib.rs              # Program entry point
+│   │   ├── state/              # Channel state management
+│   │   ├── instructions/       # Open/close operations
+│   │   └── errors/             # Error definitions
+├── sdk/             # TypeScript SDK
 │   ├── src/
-│   │   ├── index.ts            # SDK exports
-│   │   ├── solbolt.ts          # Main SDK class
-│   │   ├── voucher.ts          # Off-chain voucher system
-│   │   ├── types.ts            # TypeScript interfaces
-│   │   └── utils.ts            # Utility functions
-│   └── package.json            # NPM package configuration
-├── cli/             # Command-line demo tool
-│   ├── src/
-│   │   ├── index.ts            # CLI entry point
-│   │   ├── demo-runner.ts      # Interactive demo
-│   │   └── channel-manager.ts  # Channel management
-│   └── package.json            # CLI dependencies
-├── examples/        # Usage examples and tutorials
-│   ├── basic-usage.ts          # Beginner-friendly example
-│   ├── advanced-usage.ts       # Complex scenarios
-│   └── README.md               # Examples documentation
-└── tests/           # Test suite
+│   │   ├── solbolt.ts         # Main SDK class
+│   │   ├── voucher.ts         # Off-chain voucher system
+│   │   └── utils/             # Helper functions
+├── cli/             # Command-line interface
+└── examples/        # Usage examples
 ```
 
-## 🛠️ Installation
+## Quick Start
 
 ### Prerequisites
-- Node.js 18+ (20+ recommended for latest Solana packages)
+- Node.js 18+
 - Rust 1.70+
 - Solana CLI 1.18+
-- Anchor Framework 0.29+
+- Anchor 0.29+
 
-### Setup
+### Installation
+
 ```bash
-# Clone the repository
-git clone https://github.com/your-org/solbolt.git
+git clone https://github.com/yourusername/solbolt.git
 cd solbolt
-
-# Install all dependencies (SDK + CLI)
 npm install
-
-# Build everything
 npm run build
-
-# Build the smart contract
-cd program
-cargo build
 ```
 
-## 🎯 Quick Start
+### Run Demo
 
-### Using the CLI Demo
 ```bash
-# Run the payment channel demo
 cd cli
-node dist/index.js demo
-
-# Or with custom settings
-node dist/index.js demo --network devnet --transactions 10
-
-# Show available commands
-node dist/index.js --help
-
-# Show SolBolt information
-node dist/index.js info
+npm run build
+node dist/index.js real-demo
 ```
 
-### Using the SDK
+## Usage
+
+### Opening a Channel
+
 ```typescript
 import { SolBolt } from '@solbolt/sdk';
+import { Connection, Keypair } from '@solana/web3.js';
 
 const solbolt = new SolBolt({
   connection: new Connection('https://api.devnet.solana.com'),
-  wallet: yourWallet,
+  wallet: yourKeypair,
 });
 
-const result = await solbolt.openChannel(partyB, {
-  initialDeposit: 1000000000, // 1 SOL in lamports
-});
+const result = await solbolt.openChannel(
+  yourKeypair,
+  counterpartyPublicKey,
+  {
+    initialDeposit: 1_000_000_000, // 1 SOL in lamports
+  }
+);
 ```
 
-### Running Examples
-```bash
-# Basic usage example
-npm run examples
+### Creating Off-Chain Vouchers
 
-# Advanced usage example
-npm run examples:advanced
+```typescript
+const voucher = solbolt.createVoucher(
+  channelId,
+  newBalanceA,
+  newBalanceB,
+  nonce
+);
+
+const signature = voucher.sign(yourKeypair.secretKey);
+voucher.addSignature(signature, true);
 ```
 
-## 🔧 Development
+### Closing a Channel
 
-### Available Scripts
-
-```bash
-# Installation
-npm install                 # Install all dependencies
-
-# Building
-npm run build               # Build SDK and CLI
-npm run build:sdk           # Build SDK only
-npm run build:cli           # Build CLI only
-
-# Testing
-npm test                    # Run all tests
-npm run test:sdk            # Test SDK only
-npm run test:cli            # Test CLI only
-
-# Development
-npm run dev                 # Start dev mode for SDK + CLI
-npm run dev:sdk             # Dev mode for SDK only
-npm run dev:cli             # Dev mode for CLI only
-
-# CLI Usage
-cd cli
-node dist/index.js demo     # Run interactive demo
-node dist/index.js info     # Show SolBolt information
-node dist/index.js channel  # Manage payment channels
-
-# Examples
-npm run examples            # Run basic usage example
-npm run examples:advanced   # Run advanced usage example
-
-# Utilities
-npm run clean               # Clean all build artifacts
-npm run format              # Format code with Prettier
-npm run format:check        # Check code formatting
+```typescript
+const result = await solbolt.closeChannel(
+  finalVoucher,
+  yourKeypair,
+  counterpartyPublicKey
+);
 ```
 
-### Smart Contract
-```bash
-cd program
-cargo build
-cargo test
-```
+## Development Roadmap
 
-### SDK
-```bash
-npm run dev:sdk
-npm run test:sdk
-```
+### Current Phase - Core Protocol
+- [x] Basic channel open/close
+- [x] Off-chain voucher system
+- [x] TypeScript SDK
+- [x] CLI demo tool
+- [ ] On-chain nonce verification
+- [ ] Signature verification
+- [ ] Dispute resolution mechanism
+- [ ] Timeout protection
 
-### CLI
-```bash
-npm run dev:cli
-npm run test:cli
-```
+### Next Phase - Production Features
+- [ ] Challenge period implementation
+- [ ] Unidirectional channels
+- [ ] Partial withdrawals
+- [ ] Watchtower protocol
+- [ ] Security audit
+- [ ] Mainnet deployment
 
-### All Components
-```bash
-# Build everything
-npm run build
+## Security Considerations
 
-# Run all tests
+SolBolt is under active development. The following security features are being implemented:
+
+- **State verification** - On-chain validation of state updates
+- **Dispute resolution** - Challenge period for contested closures
+- **Timeout mechanisms** - Protection against unresponsive counterparties
+- **Signature verification** - Cryptographic proof of authorization
+
+See [SECURITY.md](./SECURITY.md) for current implementation status.
+
+## Testing
+
+```bash
+# Run tests
 npm test
 
-# Development mode (SDK + CLI)
-npm run dev
+# Test on devnet
+cd cli
+node dist/index.js demo --network devnet
+
+# Test with real funds (testnet)
+node dist/index.js real-demo --network testnet
 ```
 
-## 📚 Documentation
+## Deployment
 
-- [Smart Contract API](./program/README.md)
-- [SDK Documentation](./sdk/README.md)
-- [CLI Usage](./cli/README.md)
-- [Examples](./examples/README.md)
-- [Deployment Guide](./DEPLOYMENT.md)
+For testnet deployment instructions, see [README.md](./README.md).
 
-## 🤝 Contributing
+Mainnet deployment will be available after security audit completion.
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+## Use Cases
 
-## 📄 License
+- **Micropayments** - Sub-cent transactions for content, APIs, gaming
+- **Streaming payments** - Pay-per-second for video, music, or services
+- **Gaming** - Instant in-game transactions without network delays
+- **IoT payments** - Machine-to-machine micropayments
+- **Subscription services** - Fine-grained billing without overhead
 
-MIT License - see [LICENSE](LICENSE) for details.
+## Performance
 
-## 🔗 Links
+- **Throughput** - Unlimited off-chain transactions per second
+- **Latency** - Instant voucher signing (~10ms)
+- **Fees** - Only 2 on-chain transactions (open + close)
+- **Scalability** - Independent of blockchain congestion
 
-- [Website](https://solbolt.dev)
-- [Documentation](https://docs.solbolt.dev)
-- [Discord](https://discord.gg/solbolt)
-- [Twitter](https://twitter.com/solbolt) 
+## Contributing
+
+Contributions welcome! Areas of focus:
+
+- Security enhancements
+- Protocol improvements
+- SDK features
+- Documentation
+- Testing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+
+## Documentation
+
+- [API Documentation](./docs/API.md)
+- [Security Status](./SECURITY.md)
+- [Deployment Guide](./README.md)
+- [Architecture Overview](./docs/ARCHITECTURE.md)
+
+## Community
+
+- GitHub Issues: Bug reports and feature requests
+- Discussions: Protocol design and improvements
+- Twitter: [@solbolt](https://twitter.com/solbolt)
+
+## License
+
+MIT License - see [LICENSE](./LICENSE) for details.
+
+## Acknowledgments
+
+Inspired by Bitcoin's Lightning Network and Ethereum state channels. Built with Anchor framework and Solana's high-performance blockchain.
+
+---
+
+**Building the future of instant, low-cost payments on Solana.**

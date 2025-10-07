@@ -55,9 +55,13 @@ export class ChannelManager {
       
       // In a real implementation, this would be an actual blockchain transaction
       // For demo purposes, we'll simulate it
-      const result = await this.solbolt.openChannel(partyB, {
-        initialDeposit: depositLamports,
-      });
+      const result = await this.solbolt.openChannel(
+        this.wallet,  // Add the wallet/keypair as first argument
+        partyB,
+        {
+          initialDeposit: depositLamports,
+        }
+      );
 
       if (result.error) {
         console.error(chalk.red('❌ Failed to open channel:'), result.error);

@@ -1,8 +1,7 @@
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import { Connection, Keypair, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { SolBolt } from '@solbolt/sdk';
-import { lamportsToSol, solToLamports } from '@solbolt/sdk';
+import { SolBolt, lamportsToSol, solToLamports, findChannelPDA } from '@solbolt/sdk';
 import bs58 from 'bs58';
 
 interface RealFundsDemoConfig {
@@ -18,6 +17,7 @@ interface RealFundsDemoState {
   userBalance: number;
   bobBalance: number;
   nonce: number;
+  walletBalance?: number;
   transactions: Array<{
     from: string;
     to: string;
@@ -43,11 +43,9 @@ export class RealFundsDemo {
       transactions: [],
     };
     
-    // Initialize connection based on network
     const rpcEndpoint = this.getRpcEndpoint(config.network);
     this.connection = new Connection(rpcEndpoint);
     
-    // Initialize SolBolt SDK
     this.solbolt = new SolBolt({
       connection: this.connection,
       wallet: this.state.userWallet,
@@ -113,31 +111,38 @@ export class RealFundsDemo {
     ]);
 
     try {
-      // Try to parse as base58 first, then hex
-      let secretKey: Uint8Array;
+      let keyBytes: Uint8Array;
+
       try {
-        // Try base58 first (common for Solana private keys)
-        secretKey = bs58.decode(privateKeyInput);
+        keyBytes = bs58.decode(privateKeyInput);
       } catch {
-        // If base58 fails, try hex
-        try {
-          secretKey = Uint8Array.from(Buffer.from(privateKeyInput, 'hex'));
-        } catch {
-          throw new Error('Invalid private key format. Please provide a valid base58 or hex string.');
-        }
+        keyBytes = Uint8Array.from(Buffer.from(privateKeyInput, 'hex'));
       }
 
-      this.state.userWallet = Keypair.fromSecretKey(secretKey);
-      
+      console.log("Input bytes length:", keyBytes.length);
+
+      let keypair: Keypair;
+
+      if (keyBytes.length === 32) {
+        keypair = Keypair.fromSeed(keyBytes);
+        console.log("✅ Detected 32-byte seed. Generated full keypair.");
+      } else if (keyBytes.length === 64) {
+        keypair = Keypair.fromSecretKey(keyBytes);
+        console.log("✅ Detected 64-byte secret key.");
+      } else {
+        throw new Error(`Invalid secret key size: ${keyBytes.length}. Must be 32 or 64 bytes.`);
+      }
+
+      this.state.userWallet = keypair;
+
       console.log(chalk.green('✅ Wallet loaded successfully!'));
       console.log(chalk.gray(`Public Key: ${this.state.userWallet.publicKey.toString()}`));
-      
-      // Update SolBolt with the real wallet
+
       this.solbolt = new SolBolt({
         connection: this.connection,
         wallet: this.state.userWallet,
       });
-      
+
     } catch (error) {
       console.error(chalk.red('❌ Failed to load wallet:'), error);
       process.exit(1);
@@ -153,13 +158,15 @@ export class RealFundsDemo {
       
       console.log(chalk.green(`Current balance: ${balanceSol} SOL`));
       
-      if (balanceSol < this.config.depositAmount + 0.01) {
-        console.error(chalk.red(`❌ Insufficient balance! You need at least ${this.config.depositAmount + 0.01} SOL`));
+      this.state.walletBalance = balanceSol;
+      
+      if (balanceSol < 0.01) {
+        console.error(chalk.red(`❌ Insufficient balance! You need at least 0.01 SOL for fees`));
         console.log(chalk.yellow('Please fund your wallet and try again.'));
         process.exit(1);
       }
       
-      console.log(chalk.green('✅ Sufficient balance for demo!'));
+      console.log(chalk.green('✅ Wallet funded!'));
       
     } catch (error) {
       console.error(chalk.red('❌ Failed to check balance:'), error);
@@ -180,7 +187,6 @@ export class RealFundsDemo {
     ]);
 
     if (useDemoWallet) {
-      // Generate a new keypair for Bob
       this.state.bobWallet = Keypair.generate();
       
       console.log(chalk.green('Party B (Demo Wallet):'));
@@ -205,10 +211,9 @@ export class RealFundsDemo {
         },
       ]);
 
-      // Create a placeholder keypair for the real wallet (we won't have the private key)
       this.state.bobWallet = {
         publicKey: new PublicKey(partyBAddress),
-        secretKey: new Uint8Array(64), // Placeholder
+        secretKey: new Uint8Array(64),
       } as Keypair;
       
       console.log(chalk.green('Party B (Real Wallet):'));
@@ -235,14 +240,37 @@ export class RealFundsDemo {
     console.log(chalk.blue.bold('\n📺 Opening payment channel with real SOL...\n'));
     
     console.log(chalk.yellow('Step 1: Creating channel on Solana blockchain...'));
-    console.log(chalk.gray(`Deposit amount: ${this.config.depositAmount} SOL`));
     console.log(chalk.gray(`Network: ${this.config.network}`));
+    
+    const { depositAmount } = await inquirer.prompt([
+      {
+        type: 'number',
+        name: 'depositAmount',
+        message: 'Enter deposit amount (SOL):',
+        default: this.config.depositAmount,
+        validate: (input) => {
+          if (input <= 0) {
+            return 'Deposit amount must be greater than 0';
+          }
+          if (input > 100) {
+            return 'Deposit amount seems too high. Please enter a reasonable amount.';
+          }
+          const requiredBalance = input + 0.01;
+          if (this.state.walletBalance && requiredBalance > this.state.walletBalance) {
+            return `Insufficient balance! You have ${this.state.walletBalance} SOL but need ${requiredBalance} SOL (${input} deposit + 0.01 for fees)`;
+          }
+          return true;
+        },
+      },
+    ]);
+
+    console.log(chalk.gray(`\nDeposit amount: ${depositAmount} SOL`));
     
     const { confirm } = await inquirer.prompt([
       {
         type: 'confirm',
         name: 'confirm',
-        message: `Confirm opening channel with ${this.config.depositAmount} SOL deposit?`,
+        message: `Confirm opening channel with ${depositAmount} SOL deposit?`,
         default: false,
       },
     ]);
@@ -253,26 +281,37 @@ export class RealFundsDemo {
     }
 
     try {
-      const depositLamports = solToLamports(this.config.depositAmount);
+      const depositLamports = solToLamports(depositAmount);
+      
+      const [channelPda] = findChannelPDA(
+        this.state.userWallet.publicKey,
+        this.state.bobWallet.publicKey,
+        this.solbolt.programId
+      );
+      
+      this.state.channelId = channelPda;
       
       console.log(chalk.yellow('\nSending transaction to open channel...'));
       
-      const result = await this.solbolt.openChannel(this.state.bobWallet.publicKey, {
-        initialDeposit: depositLamports,
-      });
+      const result = await this.solbolt.openChannel(
+        this.state.userWallet,
+        this.state.bobWallet.publicKey,
+        {
+          initialDeposit: depositLamports,
+        }
+      );
 
       if (result.error) {
         console.error(chalk.red('❌ Failed to open channel:'), result.error);
         process.exit(1);
       }
 
-      this.state.channelId = result.channelState?.channelId;
       this.state.userBalance = depositLamports;
       this.state.bobBalance = 0;
       
       console.log(chalk.green('✅ Channel opened successfully!'));
       console.log(chalk.gray(`Transaction: ${result.signature}`));
-      console.log(chalk.gray(`Channel ID: ${this.state.channelId?.toString()}`));
+      console.log(chalk.gray(`Channel ID: ${this.state.channelId.toString()}`));
       console.log(chalk.gray(`Initial balance - You: ${lamportsToSol(this.state.userBalance)} SOL, Bob: ${lamportsToSol(this.state.bobBalance)} SOL`));
       
     } catch (error) {
@@ -284,19 +323,38 @@ export class RealFundsDemo {
   private async conductOffChainTransactions(): Promise<void> {
     console.log(chalk.blue.bold('\n💸 Conducting off-chain transactions...\n'));
     
-    console.log(chalk.yellow(`Step 2: Simulating ${this.config.transactionCount} off-chain micropayments...`));
-    console.log(chalk.gray('These transactions happen instantly without blockchain fees!\n'));
+    const { totalToSend } = await inquirer.prompt([
+      {
+        type: 'number',
+        name: 'totalToSend',
+        message: 'How much SOL do you want to send to Bob?',
+        default: 0.05,
+        validate: (input) => {
+          if (input <= 0) {
+            return 'Amount must be greater than 0';
+          }
+          if (input > this.state.userBalance / LAMPORTS_PER_SOL) {
+            return `You only have ${lamportsToSol(this.state.userBalance)} SOL in the channel`;
+          }
+          return true;
+        },
+      },
+    ]);
+
+    const totalToSendLamports = solToLamports(totalToSend);
+    const paymentAmount = Math.floor(totalToSendLamports / this.config.transactionCount);
+    const paymentAmountSol = lamportsToSol(paymentAmount);
     
-    const paymentAmount = solToLamports(0.001); // 0.001 SOL per transaction
+    console.log(chalk.yellow(`Step 2: Sending ${totalToSend} SOL to Bob through ${this.config.transactionCount} off-chain micropayments...`));
+    console.log(chalk.gray(`Each payment: ~${paymentAmountSol} SOL`));
+    console.log(chalk.gray('These transactions happen instantly without blockchain fees!\n'));
     
     for (let i = 0; i < this.config.transactionCount; i++) {
       this.state.nonce++;
       
-      // Simulate you sending 0.001 SOL to Bob
       this.state.userBalance -= paymentAmount;
       this.state.bobBalance += paymentAmount;
       
-      // Create and sign voucher
       const voucher = this.solbolt.createVoucher(
         this.state.channelId!,
         this.state.userBalance,
@@ -304,42 +362,36 @@ export class RealFundsDemo {
         this.state.nonce
       );
       
-      // Sign with both parties
       const userSignature = voucher.sign(this.state.userWallet.secretKey);
       
-      // For demo wallet, we can sign. For real wallet, we simulate the signature
       let bobSignature: Uint8Array;
       if (this.state.bobWallet.secretKey.length === 64 && this.state.bobWallet.secretKey.some(byte => byte !== 0)) {
-        // Demo wallet - we have the private key
         bobSignature = voucher.sign(this.state.bobWallet.secretKey);
       } else {
-        // Real wallet - simulate signature (in real scenario, Party B would sign)
-        bobSignature = new Uint8Array(64); // Placeholder signature
-        console.log(chalk.yellow(`  Note: Party B signature simulated. In real scenario, Party B would sign this voucher.`));
+        bobSignature = new Uint8Array(64);
+        console.log(chalk.yellow(`  Note: Party B signature simulated.`));
       }
       
       voucher.addSignature(userSignature, true);
       voucher.addSignature(bobSignature, false);
       
-      // Record transaction
       this.state.transactions.push({
         from: 'You',
         to: 'Bob',
-        amount: 0.001,
+        amount: paymentAmountSol,
         nonce: this.state.nonce,
       });
       
-      console.log(chalk.green(`Transaction ${i + 1}: You → Bob (0.001 SOL)`));
+      console.log(chalk.green(`Transaction ${i + 1}: You → Bob (${paymentAmountSol} SOL)`));
       console.log(chalk.gray(`  Nonce: ${this.state.nonce}`));
       console.log(chalk.gray(`  You: ${lamportsToSol(this.state.userBalance)} SOL`));
       console.log(chalk.gray(`  Bob: ${lamportsToSol(this.state.bobBalance)} SOL`));
       
-      // Add small delay for demo effect
       await this.delay(500);
     }
     
-    console.log(chalk.green(`\n✅ Completed ${this.config.transactionCount} off-chain transactions!`));
-    console.log(chalk.gray('Total saved: ~$0.25 in transaction fees (at $0.05 per transaction)'));
+    console.log(chalk.green(`\n✅ Sent ${totalToSend} SOL to Bob through ${this.config.transactionCount} off-chain transactions!`));
+    console.log(chalk.gray(`Total fees saved: ~$${(this.config.transactionCount * 0.00025).toFixed(4)} (compared to ${this.config.transactionCount} on-chain transactions)`));
   }
 
   private async closeChannel(): Promise<void> {
@@ -363,26 +415,30 @@ export class RealFundsDemo {
     }
 
     try {
-      // Create final voucher
+      if (!this.state.userWallet || !this.state.bobWallet || !this.state.channelId) {
+        throw new Error('Missing required wallet or channel data');
+      }
+
+      console.log(chalk.gray(`Channel ID: ${this.state.channelId.toString()}`));
+      console.log(chalk.gray(`Party A: ${this.state.userWallet.publicKey.toString()}`));
+      console.log(chalk.gray(`Party B: ${this.state.bobWallet.publicKey.toString()}`));
+
       const finalVoucher = this.solbolt.createVoucher(
-        this.state.channelId!,
+        this.state.channelId,
         this.state.userBalance,
         this.state.bobBalance,
         this.state.nonce
       );
       
-      // Sign with both parties
       const userSignature = finalVoucher.sign(this.state.userWallet.secretKey);
       
-      // For demo wallet, we can sign. For real wallet, we simulate the signature
       let bobSignature: Uint8Array;
-      if (this.state.bobWallet.secretKey.length === 64 && this.state.bobWallet.secretKey.some(byte => byte !== 0)) {
-        // Demo wallet - we have the private key
+      if (this.state.bobWallet.secretKey.length === 64 && 
+          this.state.bobWallet.secretKey.some(byte => byte !== 0)) {
         bobSignature = finalVoucher.sign(this.state.bobWallet.secretKey);
       } else {
-        // Real wallet - simulate signature (in real scenario, Party B would sign)
-        bobSignature = new Uint8Array(64); // Placeholder signature
-        console.log(chalk.yellow(`  Note: Party B signature simulated. In real scenario, Party B would sign this voucher.`));
+        bobSignature = new Uint8Array(64);
+        console.log(chalk.yellow(`  Note: Party B signature simulated.`));
       }
       
       finalVoucher.addSignature(userSignature, true);
@@ -390,7 +446,11 @@ export class RealFundsDemo {
       
       console.log(chalk.yellow('\nSending transaction to close channel...'));
       
-      const result = await this.solbolt.closeChannel(finalVoucher);
+      const result = await this.solbolt.closeChannel(
+        finalVoucher,
+        this.state.userWallet,
+        this.state.bobWallet.publicKey
+      );
       
       if (result.error) {
         console.error(chalk.red('❌ Failed to close channel:'), result.error);
@@ -408,32 +468,24 @@ export class RealFundsDemo {
   }
 
   private async showSummary(): Promise<void> {
-    console.log(chalk.blue.bold('\n📊 Real Funds Demo Summary\n'));
+    console.log(chalk.blue.bold('\n📊 Demo Summary\n'));
     
-    const totalTransactions = this.state.transactions.length;
-    const totalAmount = totalTransactions * 0.001;
-    const savedFees = totalTransactions * 0.05; // Estimated $0.05 per transaction
+    const totalAmount = this.state.transactions.reduce((sum, tx) => sum + tx.amount, 0);
+    const savedFees = this.state.transactions.length * 0.00025;
     
     console.log(chalk.green('🎯 Results:'));
-    console.log(chalk.white(`  • Total transactions: ${totalTransactions}`));
-    console.log(chalk.white(`  • Total amount transferred: ${totalAmount} SOL`));
+    console.log(chalk.white(`  • Total transactions: ${this.state.transactions.length}`));
+    console.log(chalk.white(`  • Total amount transferred: ${totalAmount.toFixed(4)} SOL`));
     console.log(chalk.white(`  • On-chain transactions: 2 (open + close)`));
-    console.log(chalk.white(`  • Off-chain transactions: ${totalTransactions}`));
-    console.log(chalk.white(`  • Estimated fees saved: $${savedFees.toFixed(2)}`));
-    
-    console.log(chalk.green('\n💰 Cost Breakdown:'));
-    console.log(chalk.white(`  • Channel deposit: ${this.config.depositAmount} SOL`));
-    console.log(chalk.white(`  • Transferred to Bob: ${totalAmount} SOL`));
-    console.log(chalk.white(`  • Transaction fees: ~0.001 SOL (2 on-chain tx)`));
-    console.log(chalk.white(`  • Net cost: ~${(this.config.depositAmount - totalAmount + 0.001).toFixed(4)} SOL`));
+    console.log(chalk.white(`  • Off-chain transactions: ${this.state.transactions.length}`));
+    console.log(chalk.white(`  • Actual fees saved: $${savedFees.toFixed(4)}`));
     
     console.log(chalk.green('\n⚡ Benefits Demonstrated:'));
     console.log(chalk.white('  • Instant micropayments'));
-    console.log(chalk.white('  • Dramatically reduced fees'));
-    console.log(chalk.white('  • No network congestion'));
+    console.log(chalk.white('  • Reduced on-chain congestion'));
     console.log(chalk.white('  • Scalable microtransactions'));
     
-    console.log(chalk.blue.bold('\n🚀 Thanks for testing SolBolt with real funds!\n'));
+    console.log(chalk.blue.bold('\n🚀 Thanks for testing SolBolt!\n'));
   }
 
   private getRpcEndpoint(network: string): string {
@@ -442,8 +494,6 @@ export class RealFundsDemo {
         return 'https://api.devnet.solana.com';
       case 'testnet':
         return 'https://api.testnet.solana.com';
-      case 'mainnet':
-        return 'https://api.mainnet-beta.solana.com';
       default:
         return 'https://api.devnet.solana.com';
     }
@@ -452,4 +502,4 @@ export class RealFundsDemo {
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
-} 
+}

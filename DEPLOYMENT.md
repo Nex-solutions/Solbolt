@@ -1,388 +1,331 @@
-# SolBolt Deployment Guide
+# Testnet Deployment Guide
 
-This guide covers deploying and using SolBolt on different Solana networks.
+This guide covers deploying SolBolt to Solana testnet for testing and development.
 
-## 📋 Prerequisites
+## Prerequisites
 
-Before deploying, ensure you have:
+- Solana CLI 1.18+
+- Anchor 0.29+
+- Node.js 18+
+- ~2 SOL on testnet for deployment
 
-- **Solana CLI** (v1.18+): [Installation Guide](https://docs.solana.com/cli/install-solana-cli-tools)
-- **Anchor Framework** (v0.29+): [Installation Guide](https://www.anchor-lang.com/docs/installation)
-- **Node.js** (v18+, v20+ recommended): [Download](https://nodejs.org/)
-- **Rust** (v1.70+): [Installation Guide](https://rustup.rs/)
-
-## 🔧 Smart Contract Deployment
+## Deployment Steps
 
 ### 1. Build the Program
 
 ```bash
 cd program
-cargo build
+anchor build
 ```
 
-### 2. Generate Program ID
+### 2. Get Program ID
 
 ```bash
-# Generate a new keypair for your program
-solana-keygen new -o target/deploy/solbolt-keypair.json
-
-# Get the program ID
-solana-keygen pubkey target/deploy/solbolt-keypair.json
+solana address -k target/deploy/solbolt-keypair.json
 ```
+
+Copy this program ID for the next step.
 
 ### 3. Update Program ID
 
-Update the `declare_id!()` in `program/src/lib.rs` with your generated program ID:
+Edit `program/src/lib.rs`:
 
 ```rust
 declare_id!("YOUR_PROGRAM_ID_HERE");
 ```
 
-### 4. Build for Deployment
+Rebuild:
 
 ```bash
-# Build the program for deployment
 anchor build
-
-# The program will be built to target/deploy/solbolt.so
 ```
 
-### 5. Deploy to Network
+### 4. Configure Testnet
 
-#### Devnet (Recommended for Testing)
 ```bash
-# Set cluster to devnet
-solana config set --url devnet
+# Set cluster
+solana config set --url testnet
 
-# Airdrop SOL for deployment
+# Create or use existing wallet
+solana-keygen new -o ~/testnet-deployer.json
+solana config set --keypair ~/testnet-deployer.json
+
+# Verify configuration
+solana config get
+```
+
+### 5. Fund Your Wallet
+
+**Option A: Web Faucet**
+1. Visit https://faucet.solana.com/
+2. Enter your wallet address: `solana address`
+3. Select "Testnet"
+4. Request 2 SOL
+
+**Option B: CLI**
+```bash
 solana airdrop 2
-
-# Deploy the program
-solana program deploy target/deploy/solbolt.so
 ```
 
-#### Testnet
+Verify balance:
 ```bash
-# Set cluster to testnet
-solana config set --url testnet
-
-# Deploy the program
-solana program deploy target/deploy/solbolt.so
+solana balance
 ```
 
-#### Mainnet
-```bash
-# Set cluster to mainnet
-solana config set --url mainnet-beta
+### 6. Deploy to Testnet
 
-# Deploy the program (ensure you have sufficient SOL)
-solana program deploy target/deploy/solbolt.so
+```bash
+anchor deploy --provider.cluster testnet
 ```
 
-### 6. Verify Deployment
+Save the deployment transaction signature.
 
-```bash
-# Check program info
-solana program show <PROGRAM_ID>
+### 7. Update SDK Configuration
 
-# Verify the program is deployed
-solana program dump <PROGRAM_ID> program.so
+Edit `sdk/src/solbolt.ts`:
+
+```typescript
+const TESTNET_PROGRAM_ID = new PublicKey('YOUR_DEPLOYED_PROGRAM_ID');
+
+export class SolBolt {
+  constructor(config: SolBoltConfig) {
+    this.programId = config.programId || TESTNET_PROGRAM_ID;
+    // ...
+  }
+}
 ```
 
-## 📦 SDK Setup
-
-### 1. Install SDK
+### 8. Build SDK and CLI
 
 ```bash
-# From the project root
-npm install
-
-# Or install SDK separately
-cd sdk
-npm install
+# From project root
 npm run build
 ```
 
-### 2. Configure SDK
-
-```typescript
-import { SolBolt } from '@solbolt/sdk';
-import { Connection, Keypair } from '@solana/web3.js';
-
-// Initialize SolBolt with your deployed program
-const solbolt = new SolBolt({
-  connection: new Connection('https://api.devnet.solana.com'),
-  wallet: yourWallet,
-  programId: 'YOUR_PROGRAM_ID_HERE', // Your deployed program ID
-});
-```
-
-### 3. Basic Usage
-
-```typescript
-// Open a payment channel
-const result = await solbolt.openChannel(partyBPublicKey, {
-  initialDeposit: 1000000000, // 1 SOL in lamports
-});
-
-// Update channel state
-const updateResult = await solbolt.updateChannel(channelId, {
-  balanceA: 600000000,  // 0.6 SOL
-  balanceB: 400000000,  // 0.4 SOL
-  nonce: 1,
-  signatureA: signatureA,
-  signatureB: signatureB,
-});
-
-// Close channel
-const closeResult = await solbolt.closeChannel(channelId, {
-  balanceA: 600000000,
-  balanceB: 400000000,
-  nonce: 1,
-  signatureA: signatureA,
-  signatureB: signatureB,
-});
-```
-
-## 🖥️ CLI Setup
-
-### 1. Build CLI
+### 9. Test Deployment
 
 ```bash
 cd cli
-npm install
-npm run build
+node dist/index.js real-demo --network testnet
 ```
 
-### 2. Run CLI Commands
+## Verification
+
+### Check Program Status
 
 ```bash
-# Show help
-node dist/index.js --help
-
-# Run interactive demo
-node dist/index.js demo
-
-# Run demo on specific network
-node dist/index.js demo --network devnet --transactions 10
-
-# Show SolBolt information
-node dist/index.js info
-
-# Manage channels
-node dist/index.js channel open --party <PUBLIC_KEY> --deposit 1
-node dist/index.js channel status --channel <CHANNEL_ID>
-node dist/index.js channel close --channel <CHANNEL_ID>
-```
-
-### 3. Install CLI Globally (Optional)
-
-```bash
-cd cli
-npm install -g .
-
-# Now you can use solbolt from anywhere
-solbolt info
-solbolt demo
-solbolt channel open --party <PUBLIC_KEY> --deposit 1
-```
-
-## 🌐 Network Configuration
-
-### Devnet (Recommended for Development)
-
-```bash
-# Solana CLI
-solana config set --url devnet
-
-# SDK Configuration
-const connection = new Connection('https://api.devnet.solana.com');
-
-# CLI Configuration
-node dist/index.js demo --network devnet
-```
-
-### Testnet
-
-```bash
-# Solana CLI
-solana config set --url testnet
-
-# SDK Configuration
-const connection = new Connection('https://api.testnet.solana.com');
-
-# CLI Configuration
-node dist/index.js demo --network testnet
-```
-
-### Mainnet
-
-```bash
-# Solana CLI
-solana config set --url mainnet-beta
-
-# SDK Configuration
-const connection = new Connection('https://api.mainnet-beta.solana.com');
-
-# CLI Configuration
-node dist/index.js demo --network mainnet
-```
-
-## 🔐 Security Considerations
-
-### 1. Key Management
-
-- **Never commit private keys** to version control
-- Use environment variables for sensitive data
-- Consider using hardware wallets for mainnet
-
-### 2. Program Upgrades
-
-- Solana programs are immutable once deployed
-- Plan your program carefully before mainnet deployment
-- Test thoroughly on devnet/testnet first
-
-### 3. Channel Security
-
-- Verify all signatures before accepting channel updates
-- Implement proper timeout mechanisms
-- Monitor channel states regularly
-
-## 🧪 Testing
-
-### 1. Unit Tests
-
-```bash
-# Test smart contract
-cd program
-cargo test
-
-# Test SDK
-cd ../sdk
-npm test
-
-# Test CLI
-cd ../cli
-npm test
-```
-
-### 2. Integration Tests
-
-```bash
-# Run full integration test
-npm run test:integration
-
-# Test on devnet
-npm run test:devnet
-```
-
-### 3. Manual Testing
-
-```bash
-# Run CLI demo
-cd cli
-node dist/index.js demo
-
-# Test channel operations
-node dist/index.js channel open --party <TEST_PUBLIC_KEY> --deposit 0.1
-```
-
-## 📊 Monitoring
-
-### 1. Program Monitoring
-
-```bash
-# Monitor program logs
-solana logs <PROGRAM_ID>
+# View program info
+solana program show YOUR_PROGRAM_ID
 
 # Check program account
-solana account <PROGRAM_ID>
+solana account YOUR_PROGRAM_ID --output json
 ```
 
-### 2. Channel Monitoring
-
-```typescript
-// Monitor channel state changes
-const channelState = await solbolt.getChannelState(channelId);
-console.log('Channel state:', channelState);
-```
-
-### 3. Transaction Monitoring
+### Monitor Program Logs
 
 ```bash
-# Monitor recent transactions
-solana transaction-history <WALLET_ADDRESS>
-
-# Check transaction status
-solana confirm <TRANSACTION_SIGNATURE>
+solana logs YOUR_PROGRAM_ID
 ```
 
-## 🚀 Production Checklist
+## Configuration
 
-Before deploying to mainnet:
+### Network Endpoints
 
-- [ ] **Smart Contract**
-  - [ ] All tests passing
-  - [ ] Security audit completed
-  - [ ] Program ID configured
-  - [ ] Build successful
+The CLI supports multiple networks:
 
-- [ ] **SDK**
-  - [ ] All functions tested
-  - [ ] Error handling implemented
-  - [ ] TypeScript types complete
-  - [ ] Documentation updated
+```bash
+# Testnet
+node dist/index.js real-demo --network testnet
 
-- [ ] **CLI**
-  - [ ] All commands working
-  - [ ] Error handling robust
-  - [ ] User experience polished
-  - [ ] Help documentation complete
+# Devnet  
+node dist/index.js real-demo --network devnet
+```
 
-- [ ] **Deployment**
-  - [ ] Devnet testing complete
-  - [ ] Testnet validation done
-  - [ ] Mainnet deployment tested
-  - [ ] Monitoring setup ready
+### RPC Configuration
 
-## 🆘 Troubleshooting
+Default endpoints:
+- Testnet: `https://api.testnet.solana.com`
+- Devnet: `https://api.devnet.solana.com`
 
-### Common Issues
+For custom RPC endpoints, update `cli/src/real-funds-demo.ts`:
 
-1. **Program deployment fails**
-   - Check SOL balance
-   - Verify program ID is correct
-   - Ensure build is successful
+```typescript
+private getRpcEndpoint(network: string): string {
+  if (network === 'testnet') {
+    return process.env.TESTNET_RPC || 'https://api.testnet.solana.com';
+  }
+  // ...
+}
+```
 
-2. **SDK connection errors**
-   - Verify RPC endpoint
-   - Check network configuration
-   - Ensure wallet is connected
+## Testing
 
-3. **CLI command not found**
-   - Build the CLI first: `npm run build`
-   - Use full path: `node dist/index.js <command>`
-   - Install globally: `npm install -g .`
+### Basic Testing
 
-4. **Channel operations fail**
-   - Verify program ID in SDK
-   - Check account permissions
-   - Ensure sufficient SOL for fees
+```bash
+# Run with minimal deposit
+cd cli
+node dist/index.js real-demo --network testnet
 
-### Getting Help
+# Use 0.1 SOL for initial tests
+# Conduct 5-10 off-chain transactions
+# Verify settlement works correctly
+```
 
-- Check the [README](./README.md) for basic usage
-- Review [examples](./examples/) for code samples
-- Open an issue on GitHub for bugs
-- Join our Discord for community support
+### Advanced Testing
 
-## 📚 Additional Resources
+Test different scenarios:
+- Various deposit amounts
+- Different transaction counts
+- Multiple channels simultaneously
+- Edge cases (minimum/maximum values)
 
-- [Solana Documentation](https://docs.solana.com/)
-- [Anchor Framework](https://www.anchor-lang.com/)
-- [Solana Cookbook](https://solanacookbook.com/)
-- [SolBolt Examples](./examples/)
+## Troubleshooting
+
+### Deployment Issues
+
+**Airdrop rate limited**
+```bash
+# Wait 5-10 minutes between requests
+# Or use web faucet at faucet.solana.com
+```
+
+**Insufficient funds**
+```bash
+# Check balance
+solana balance
+
+# Request more SOL
+solana airdrop 2
+```
+
+**Build errors**
+```bash
+# Clean and rebuild
+anchor clean
+anchor build
+```
+
+### Runtime Issues
+
+**Program not found**
+```bash
+# Verify program is deployed
+solana program show YOUR_PROGRAM_ID
+
+# Check you're on correct network
+solana config get
+```
+
+**Transaction failures**
+```bash
+# Check recent logs
+solana logs YOUR_PROGRAM_ID
+
+# Verify account balances
+solana balance
+```
+
+**RPC connection issues**
+```bash
+# Try alternative RPC endpoint
+solana config set --url https://testnet.rpcpool.com
+```
+
+## Updating Deployment
+
+To update the program:
+
+```bash
+# Make changes to program code
+# Rebuild
+anchor build
+
+# Upgrade (preserves program ID)
+anchor upgrade --provider.cluster testnet target/deploy/solbolt.so --program-id YOUR_PROGRAM_ID
+```
+
+## Monitoring
+
+### Transaction History
+
+```bash
+# View wallet transactions
+solana transaction-history YOUR_WALLET_ADDRESS
+
+# Check specific transaction
+solana confirm TRANSACTION_SIGNATURE -v
+```
+
+### Program Activity
+
+```bash
+# Watch program logs in real-time
+solana logs YOUR_PROGRAM_ID
+
+# View program data account
+solana account YOUR_PROGRAM_ID
+```
+
+## Best Practices
+
+### Development Workflow
+
+1. Test thoroughly on devnet first
+2. Deploy to testnet for broader testing
+3. Monitor for issues
+4. Iterate based on feedback
+5. Prepare for mainnet after audit
+
+### Testing Guidelines
+
+- Start with small deposits (0.01-0.1 SOL)
+- Test all operations (open, transact, close)
+- Try error scenarios
+- Monitor gas costs
+- Document any issues
+
+### Security During Testing
+
+- Keep deployment keys secure
+- Monitor program usage
+- Track all transactions
+- Back up important data
+- Be responsive to issues
+
+## Cleanup
+
+To close the program and recover rent:
+
+```bash
+solana program close YOUR_PROGRAM_ID --bypass-warning
+```
+
+Note: This recovers rent but doesn't delete program data.
+
+## Next Steps
+
+After successful testnet deployment:
+
+1. Conduct thorough testing
+2. Gather user feedback
+3. Implement remaining security features
+4. Schedule security audit
+5. Prepare mainnet deployment plan
+
+## Resources
+
+- [Solana Testnet Status](https://status.solana.com/)
+- [Anchor Documentation](https://www.anchor-lang.com/)
+- [Solana CLI Reference](https://docs.solana.com/cli)
+
+## Support
+
+For deployment issues:
+- GitHub Issues: Technical problems
+- Documentation: Check README and API docs
+- Community: Discord/Telegram discussions
 
 ---
 
-**Happy building with SolBolt! ⚡** 
+**Testnet is for testing. Deploy responsibly and monitor actively.**

@@ -132,7 +132,7 @@ export class SolBolt {
   private connection: Connection;
   private wallet: any;
   private program: Program;
-  private programId: PublicKey;
+  public programId: PublicKey;
 
   constructor(config: SolBoltConfig) {
     this.connection = config.connection;
@@ -144,7 +144,8 @@ export class SolBolt {
       this.wallet = config.wallet;
     }
     
-    this.programId = config.programId || new PublicKey('F61wLbAw1hUvsEjArLDEmvzBPpMxL9oJKAxDtGsAi3VV');
+    // this.programId = config.programId || new PublicKey('F61wLbAw1hUvsEjArLDEmvzBPpMxL9oJKAxDtGsAi3VV');
+    this.programId = new PublicKey('F61wLbAw1hUvsEjArLDEmvzBPpMxL9oJKAxDtGsAi3VV');
     
     // Initialize Anchor provider
     const provider = new AnchorProvider(
@@ -158,15 +159,16 @@ export class SolBolt {
   }
 
   /**
-   * Open a new payment channel with another party
+   * Open a new payment channel
    */
   async openChannel(
-    partyB: PublicKey,
+    partyA: Keypair,            // signer for party A
+    partyB: PublicKey,          // counterparty
     config: ChannelConfig
   ): Promise<ChannelResult> {
     try {
       const [channelPda] = findChannelPDA(
-        this.wallet.publicKey,
+        partyA.publicKey,        // explicit
         partyB,
         this.programId
       );
@@ -175,15 +177,19 @@ export class SolBolt {
         .openChannel(toBN(config.initialDeposit))
         .accounts({
           channel: channelPda,
-          partyA: this.wallet.publicKey,
+          partyA: partyA.publicKey,
           partyB: partyB,
           systemProgram: web3.SystemProgram.programId,
         })
+        .signers([partyA])
         .rpc();
+
+      // Then fetch the state
+      const channelState = await this.getChannelState(channelPda);
 
       return {
         signature: tx,
-        channelState: await this.getChannelState(channelPda),
+        channelState: channelState,
       };
     } catch (error) {
       return {
@@ -192,6 +198,7 @@ export class SolBolt {
       };
     }
   }
+
 
   /**
    * Update channel state with a signed voucher
@@ -223,9 +230,12 @@ export class SolBolt {
         })
         .rpc();
 
+      // Then fetch the state
+      const channelState = await this.getChannelState(channelPda);
+
       return {
         signature: tx,
-        channelState: await this.getChannelState(channelPda),
+        channelState: channelState,
       };
     } catch (error) {
       return {
@@ -238,37 +248,42 @@ export class SolBolt {
   /**
    * Close a payment channel cooperatively
    */
-  async closeChannel(voucher: OffChainVoucher): Promise<ChannelResult> {
+  async closeChannel(
+    voucher: OffChainVoucher,
+    partyA: Keypair,
+    partyB: PublicKey
+  ): Promise<ChannelResult> {
     try {
       if (!voucher.isFullySigned()) {
         throw new Error('Voucher must be signed by both parties');
       }
 
-      const [channelPda] = findChannelPDA(
-        voucher.channelId,
-        voucher.channelId, // This would be the actual channel PDA
-        this.programId
-      );
+      // The voucher.channelId IS the channel PDA - don't derive it again
+      const channelPda = voucher.channelId;
 
       const tx = await this.program.methods
         .closeChannel(
           toBN(voucher.balanceA),
           toBN(voucher.balanceB),
           toBN(voucher.nonce),
-          voucher.signatureA!,
-          voucher.signatureB!
+          Array.from(voucher.signatureA!),  // Convert Uint8Array to number[]
+          Array.from(voucher.signatureB!)   // Convert Uint8Array to number[]
         )
         .accounts({
           channel: channelPda,
-          partyA: this.wallet.publicKey,
-          partyB: voucher.channelId, // This would be the actual party B
+          partyA: partyA.publicKey,
+          partyB: partyB,
           systemProgram: web3.SystemProgram.programId,
         })
+        .signers([partyA])
         .rpc();
+
+      // Fetch the final state
+      const channelState = await this.getChannelState(channelPda);
 
       return {
         signature: tx,
-        channelState: await this.getChannelState(channelPda),
+        channelState: channelState,
       };
     } catch (error) {
       return {
@@ -292,9 +307,12 @@ export class SolBolt {
         })
         .rpc();
 
+      // Then fetch the state
+      const channelState = await this.getChannelState(channelId);
+
       return {
         signature: tx,
-        channelState: await this.getChannelState(channelId),
+        channelState: channelState,
       };
     } catch (error) {
       return {

@@ -49,20 +49,12 @@ export function findChannelPDA(
   partyB: PublicKey,
   programId: PublicKey
 ): [PublicKey, number] {
-  // Ensure party order (lexicographic)
-  const [first, second] = partyA.toBuffer().compare(partyB.toBuffer()) < 0 
-    ? [partyA, partyB] 
-    : [partyB, partyA];
-
   return PublicKey.findProgramAddressSync(
-    [
-      Buffer.from('channel'),
-      first.toBuffer(),
-      second.toBuffer(),
-    ],
+    [Buffer.from("channel"), partyA.toBuffer(), partyB.toBuffer()],
     programId
   );
 }
+
 
 /**
  * Validate a public key string

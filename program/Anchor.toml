@@ -1,18 +1,27 @@
-[provider]
-cluster = "devnet"
-wallet = "~/.config/solana/id.json"
+[toolchain]
+
+[features]
+resolution = true
+skip-lint = false
 
 [programs.devnet]
-solbolt = "F61wLbAw1hUvsEjArLDEmvzBPpMxL9oJKAxDtGsAi3VV"
-
-[programs.testnet]
 solbolt = "F61wLbAw1hUvsEjArLDEmvzBPpMxL9oJKAxDtGsAi3VV"
 
 [programs.mainnet]
 solbolt = "F61wLbAw1hUvsEjArLDEmvzBPpMxL9oJKAxDtGsAi3VV"
 
+[programs.testnet]
+solbolt = "A1KPpyv4679heAzsV3GLMDz53Eb39VbX8FryL3g9XwSY"
+
 [registry]
 url = "https://api.apr.dev"
+
+[provider]
+cluster = "devnet"
+wallet = "~/.config/solana/id.json"
+
+[workspace]
+members = ["."]
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"

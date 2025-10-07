@@ -1,3 +1,4 @@
+#![allow(unused_imports)]
 use anchor_lang::prelude::*;
 use crate::state::PaymentChannel;
 use crate::errors::SolBoltError;
@@ -29,8 +30,8 @@ pub fn handler(
     );
     
     // Validate individual balances
-    require!(balance_a >= 0, SolBoltError::InvalidBalance);
-    require!(balance_b >= 0, SolBoltError::InvalidBalance);
+    // require!(balance_a >= 0, SolBoltError::InvalidBalance);
+    // require!(balance_b >= 0, SolBoltError::InvalidBalance);
     
     // Verify signatures (simplified - in production, you'd verify against actual public keys)
     require!(

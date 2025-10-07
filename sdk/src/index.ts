@@ -14,4 +14,4 @@ export {
   calculateTimeout,
   hasTimedOut,
   formatBalance
-} from './utils'; 
+} from './utils';

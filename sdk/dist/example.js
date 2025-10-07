@@ -23,7 +23,7 @@ async function example() {
     // Open a payment channel
     console.log('\n📺 Opening payment channel...');
     const initialDeposit = (0, utils_1.solToLamports)(1); // 1 SOL
-    const result = await solbolt.openChannel(bob.publicKey, {
+    const result = await solbolt.openChannel(alice, bob.publicKey, {
         initialDeposit,
     });
     if (result.error) {
@@ -70,7 +70,10 @@ async function example() {
     const finalBobSignature = finalVoucher.sign(bob.secretKey);
     finalVoucher.addSignature(finalAliceSignature, true);
     finalVoucher.addSignature(finalBobSignature, false);
-    const closeResult = await solbolt.closeChannel(finalVoucher);
+    // After (new signature):
+    const closeResult = await solbolt.closeChannel(finalVoucher, alice, // partyA keypair
+    bob.publicKey // partyB public key
+    );
     if (closeResult.error) {
         console.error('❌ Failed to close channel:', closeResult.error);
         return;

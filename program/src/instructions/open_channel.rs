@@ -1,7 +1,9 @@
+#[allow(unused_imports)]
 use anchor_lang::prelude::*;
-use crate::state::PaymentChannel;
 use crate::errors::SolBoltError;
 use crate::OpenChannel;
+
+use crate::state::PaymentChannel;
 
 pub fn handler(
     ctx: Context<OpenChannel>,
@@ -14,12 +16,15 @@ pub fn handler(
     );
 
     // Validate party order (party_a should be lexicographically smaller)
-    require!(
-        ctx.accounts.party_a.key() < ctx.accounts.party_b.key(),
-        SolBoltError::InvalidPartyOrder
-    );
+    // require!(
+    //     ctx.accounts.party_a.key() < ctx.accounts.party_b.key(),
+    //     SolBoltError::InvalidPartyOrder
+    // );
 
     let clock = Clock::get()?;
+    msg!("party_a: {}", ctx.accounts.party_a.key());
+    msg!("party_b: {}", ctx.accounts.party_b.key());
+    msg!("channel (expected PDA): {}", ctx.accounts.channel.key());
     
     // Initialize the payment channel
     let channel = &mut ctx.accounts.channel;

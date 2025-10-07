@@ -48,7 +48,8 @@ class ChannelManager {
             console.log(chalk_1.default.yellow('\nOpening channel...'));
             // In a real implementation, this would be an actual blockchain transaction
             // For demo purposes, we'll simulate it
-            const result = await this.solbolt.openChannel(partyB, {
+            const result = await this.solbolt.openChannel(this.wallet, // Add the wallet/keypair as first argument
+            partyB, {
                 initialDeposit: depositLamports,
             });
             if (result.error) {

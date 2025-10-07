@@ -1,4 +1,4 @@
-import { PublicKey } from '@solana/web3.js';
+import { PublicKey, Keypair } from '@solana/web3.js';
 import { ChannelState, ChannelConfig, ChannelResult, SolBoltConfig } from './types';
 import { OffChainVoucher } from './voucher';
 /**
@@ -8,12 +8,14 @@ export declare class SolBolt {
     private connection;
     private wallet;
     private program;
-    private programId;
+    programId: PublicKey;
     constructor(config: SolBoltConfig);
     /**
-     * Open a new payment channel with another party
+     * Open a new payment channel
      */
-    openChannel(partyB: PublicKey, config: ChannelConfig): Promise<ChannelResult>;
+    openChannel(partyA: Keypair, // signer for party A
+    partyB: PublicKey, // counterparty
+    config: ChannelConfig): Promise<ChannelResult>;
     /**
      * Update channel state with a signed voucher
      */
@@ -21,7 +23,7 @@ export declare class SolBolt {
     /**
      * Close a payment channel cooperatively
      */
-    closeChannel(voucher: OffChainVoucher): Promise<ChannelResult>;
+    closeChannel(voucher: OffChainVoucher, partyA: Keypair, partyB: PublicKey): Promise<ChannelResult>;
     /**
      * Force close a channel after timeout
      */

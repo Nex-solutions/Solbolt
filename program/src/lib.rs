@@ -1,10 +1,12 @@
+#![allow(unexpected_cfgs)]
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::pubkey::Pubkey;
 
 pub mod instructions;
 pub mod state;
 pub mod errors;
 
-declare_id!("F61wLbAw1hUvsEjArLDEmvzBPpMxL9oJKAxDtGsAi3VV");
+declare_id!("A1KPpyv4679heAzsV3GLMDz53Eb39VbX8FryL3g9XwSY");
 
 // Define account structs directly in lib.rs for Anchor macro
 #[derive(Accounts)]

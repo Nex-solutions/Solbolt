@@ -84,15 +84,7 @@ function fromBN(bn) {
  * Find the PDA (Program Derived Address) for a channel
  */
 function findChannelPDA(partyA, partyB, programId) {
-    // Ensure party order (lexicographic)
-    const [first, second] = partyA.toBuffer().compare(partyB.toBuffer()) < 0
-        ? [partyA, partyB]
-        : [partyB, partyA];
-    return web3_js_1.PublicKey.findProgramAddressSync([
-        Buffer.from('channel'),
-        first.toBuffer(),
-        second.toBuffer(),
-    ], programId);
+    return web3_js_1.PublicKey.findProgramAddressSync([Buffer.from("channel"), partyA.toBuffer(), partyB.toBuffer()], programId);
 }
 /**
  * Validate a public key string

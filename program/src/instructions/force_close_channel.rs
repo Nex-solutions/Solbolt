@@ -1,3 +1,4 @@
+#![allow(unused_imports)]
 use anchor_lang::prelude::*;
 use crate::state::PaymentChannel;
 use crate::errors::SolBoltError;
