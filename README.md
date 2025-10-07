@@ -186,16 +186,14 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ## Documentation
 
-- [API Documentation](./docs/API.md)
 - [Security Status](./SECURITY.md)
 - [Deployment Guide](./README.md)
-- [Architecture Overview](./docs/ARCHITECTURE.md)
 
 ## Community
 
 - GitHub Issues: Bug reports and feature requests
 - Discussions: Protocol design and improvements
-- Twitter: [@solbolt](https://twitter.com/solbolt)
+- Twitter: [@solbolt](https://x.com/solboltdotxyz)
 
 ## License
 
@@ -206,5 +204,6 @@ MIT License - see [LICENSE](./LICENSE) for details.
 Inspired by Bitcoin's Lightning Network and Ethereum state channels. Built with Anchor framework and Solana's high-performance blockchain.
 
 ---
+
 
 **Building the future of instant, low-cost payments on Solana.**
